@@ -1,0 +1,5 @@
+{
+    "input"   : "/home/rungger/Scripts/Intratumoral_Microorganisms/Pipe_Nextflow/Samplesheet.csv",
+    "outpath"   : "/home/rungger/myScratch/Nextflow_New/",
+    "krakendb"  : "/data/databases/kraken2/k2_pluspf_20240605"
+}
