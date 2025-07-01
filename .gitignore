@@ -1,3 +1,4 @@
 .nextflow/
 .nextflow.log
 .nextflow.log.*
+.nf-test*
