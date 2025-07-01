@@ -5,14 +5,22 @@ NF Pipeline to identify microorganisms from bam files
 */
 
 nextflow.enable.dsl=2
+include { validateParameters; paramsSummaryLog; samplesheetToList } from 'plugin/nf-schema'
+
+// Validate input parameters
+validateParameters()
+
+// Print summary of supplied parameters
+log.info paramsSummaryLog(workflow)
+
+// Create a new channel of metadata from a sample sheet passed to the pipeline through the --input parameter
+ch_input = Channel.fromList(samplesheetToList(params.input, "assets/schema_input.json"))
 
 /* 
 Parameter values
 */
 params.input = null
-params.outpath = null
-params.krakendb = "/data/databases/kraken2/k2_pluspf_20240605"
-params.type = null
+params.outdir = null
 
 /*
 Printing out pipeline information
