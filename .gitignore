@@ -1,4 +1,5 @@
-.nextflow/
-.nextflow.log
-.nextflow.log.*
+.nextflow*
 .nf-test*
+nf-test.config
+tests/
+test_data/
