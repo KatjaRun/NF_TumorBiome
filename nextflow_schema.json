@@ -10,43 +10,20 @@
       "type": "object",
       "fa_icon": "fas fa-terminal",
       "description": "Define where the pipeline should find input data and save output data.",
-      "required": ["input"],
       "properties": {
-        "input": {
-          "type": "string",
-          "format": "file-path",
-          "exists": true,
-          "schema": "assets/schema_input.json",
-          "mimetype": "text/csv",
-          "pattern": "^\\S+\\.csv$",
-          "description": "Path to comma-separated file containing information about the samples in the experiment.",
-          "help_text": "You will need to create a design file with information about the samples in your experiment before running the pipeline. Use this parameter to specify its location. It has to be a comma-separated file with 3 columns, and a header row.",
-          "fa_icon": "fas fa-file-csv"
+        "metadata": {
+          "type": "string"
+        },
+        "abundance_table": {
+          "type": "string"
         },
         "outdir": {
           "type": "string",
           "description": "Path to output directory where results will  be saved.",
           "fa_icon": "fas fa-folder-open"
         }
-      }
-    },
-    "preprocessing_parameters": {
-      "title": "Preprocessing parameters",
-      "type": "object",
-      "description": "Define how preprocessing should be performed.",
-      "default": "",
-      "properties": {
-        "type": {
-          "type": "string",
-          "description": "Type of sequencing data.",
-          "fa_icon": "fas fa-user-cog"
-        },
-        "krakendb": {
-          "type": "string",
-          "fa_icon": "fas fa-folder"
-        }
       },
-      "fa_icon": "fas fa-cogs"
+      "required": ["metadata"]
     },
     "downstream_analysis_options": {
       "title": "Downstream Analysis options",
@@ -54,14 +31,6 @@
       "description": "",
       "default": "",
       "properties": {
-        "phyloseq": {
-          "type": "string",
-          "fa_icon": "fas fa-database"
-        },
-        "counts": {
-          "type": "string",
-          "fa_icon": "fas fa-database"
-        },
         "survival": {
           "type": "string",
           "fa_icon": "fas fa-database"
@@ -104,13 +73,21 @@
       "$ref": "#/$defs/input_output_options"
     },
     {
-      "$ref": "#/$defs/preprocessing_parameters"
-    },
-    {
       "$ref": "#/$defs/downstream_analysis_options"
     },
     {
       "$ref": "#/$defs/generic_options"
     }
-  ]
+  ],
+  "properties": {
+    "lineage_table": {
+      "type": "string"
+    },
+    "transcript_counts": {
+      "type": "string"
+    },
+    "reference_antigens": {
+      "type": "string"
+    }
+  }
 }
