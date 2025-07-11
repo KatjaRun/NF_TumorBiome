@@ -26,7 +26,7 @@ validateParameters()
 log.info paramsSummaryLog(workflow)
 */
 
-// Starting Workflows
+// Including Workflows and Processes
 include { CreateLineageTable         } from './workflows/Gathering_Data.nf'
 include { Gathering_Data             } from './workflows/Gathering_Data.nf'
 
@@ -40,16 +40,19 @@ include { Survival_Analyses          } from './workflows/Survival_Analyses.nf'
 
 
 workflow {
+
+    // Creating channels of metadata, abundance table, and create lineage table if non-existent
     metadata_ch = channel.fromPath(params.metadata, checkIfExists: true)
     abundance_table_ch = channel.fromPath(params.abundance_table, checkIfExists: true)
     lineage_table_ch = params.lineage_table ? 
         channel.fromPath(params.lineage_table, checkIfExists: true) : 
         CreateLineageTable(abundance_table_ch)
 
-    Gathering_Data(metadata_ch, abundance_table_ch,lineage_table_ch)
+    // Generating Phyloseq
+    phyloseq_ch = Gathering_Data(metadata_ch, abundance_table_ch,lineage_table_ch)
 }
 
-// Logging info for the end
+// Logging info for the end (hopefully)
 workflow.onComplete {
     log.info "Pipeline completed successfully"
 }

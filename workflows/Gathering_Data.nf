@@ -8,6 +8,7 @@ process CreateLineageTable {
     
     output: 
     path "Lineage_table.csv"
+    
 
     script:
     """
@@ -24,7 +25,9 @@ process CreatePhyloseq {
     path lineage_table
 
     output:
-    path "Phyloseq.rds"
+    path "Phyloseq.rds", emit: phyloseq
+    path "removed_samples.txt", optional: true
+    path "removed_taxids.txt", optional: true
 
     script:
     """
@@ -33,15 +36,15 @@ process CreatePhyloseq {
 }
 
 workflow Gathering_Data {
+
     take:
         metadata
         abundance_table
         lineage_table
-    
+
     main:
-        // Build phyloseq
-        physeq = CreatePhyloseq(metadata, abundance_table, lineage_table)
+        CreatePhyloseq(metadata, abundance_table, lineage_table)
 
     emit:
-        physeq
+        CreatePhyloseq.out.phyloseq
 }
