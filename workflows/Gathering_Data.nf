@@ -26,8 +26,8 @@ process CreatePhyloseq {
 
     output:
     path "Phyloseq.rds", emit: phyloseq
-    path "removed_samples.txt", optional: true
-    path "removed_taxids.txt", optional: true
+    path "removed_samples.txt", optional: true, emit: removed_samples
+    path "removed_taxids.txt", optional: true, emit: removed_taxids
 
     script:
     """
@@ -46,5 +46,7 @@ workflow Gathering_Data {
         CreatePhyloseq(metadata, abundance_table, lineage_table)
 
     emit:
-        CreatePhyloseq.out.phyloseq
+        phyloseq       = CreatePhyloseq.out.phyloseq
+        removed_samples = CreatePhyloseq.out.removed_samples
+        removed_taxids  = CreatePhyloseq.out.removed_taxids
 }

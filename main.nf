@@ -29,9 +29,9 @@ log.info paramsSummaryLog(workflow)
 // Including Workflows and Processes
 include { CreateLineageTable         } from './workflows/Gathering_Data.nf'
 include { Gathering_Data             } from './workflows/Gathering_Data.nf'
+include { Basic_Analyses             } from './workflows/Basic_Analyses.nf'
 
 /*
-include { Basic_Analyses             } from './workflows/Basic_Analyses.nf'
 include { Transcript_counts_Analyses } from './workflows/Transcript_counts_Analyses.nf'
 include { Survival_Analyses          } from './workflows/Survival_Analyses.nf'
 */
@@ -50,6 +50,17 @@ workflow {
 
     // Generating Phyloseq
     phyloseq_ch = Gathering_Data(metadata_ch, abundance_table_ch,lineage_table_ch)
+
+    // Warnings if either samples or taxids were not completely matching
+    phyloseq_ch.removed_samples.subscribe { path ->
+        println "⚠️  Warning: Some samples were not matching. Removed samples are in: removed_samples.txt."
+    }
+    phyloseq_ch.removed_taxids.subscribe { path ->
+        println "⚠️  Warning: Some taxids were not matching. Removed taxids are in: removed_taxids.txt."
+    }
+
+    // Basic Analyses
+    Basic_Analyses(phyloseq_ch.phyloseq)
 }
 
 // Logging info for the end (hopefully)
