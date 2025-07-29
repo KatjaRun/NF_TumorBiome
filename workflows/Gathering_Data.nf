@@ -46,7 +46,7 @@ workflow Gathering_Data {
         CreatePhyloseq(metadata, abundance_table, lineage_table)
 
     emit:
-        phyloseq       = CreatePhyloseq.out.phyloseq
+        phyloseq        = CreatePhyloseq.out.phyloseq
         removed_samples = CreatePhyloseq.out.removed_samples
         removed_taxids  = CreatePhyloseq.out.removed_taxids
 }

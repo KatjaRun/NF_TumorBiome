@@ -27,6 +27,7 @@ process Core {
     
     output: 
     path "CoreParameters_*.tsv"
+    path "CorePhyloseq_*.rds", optional: true, emit: core_rds
     path "CoreHeatmap_*.png", optional: true
 
     script:
@@ -35,11 +36,23 @@ process Core {
     """
 }
 
-/*
-process Spiec_Easi {
 
+process Spiec_Easi {
+    label 'standard' 
+    publishDir "${params.outdir}/Basic_Analyses/SPIEC_EASI", mode: 'copy'
+
+    input:
+    path core_phyloseq
+    
+    output: 
+    path "Spiec_glasso_*.rds", optional: true
+
+    script:
+    """
+    SpiecEasi.R $core_phyloseq
+    """
 }
-*/
+
 
 workflow Basic_Analyses {
 
@@ -47,7 +60,11 @@ workflow Basic_Analyses {
         phyloseq
 
     main:
+        // Run diversity analyses
         Diversity(phyloseq)
-        Core(phyloseq)
-
+        // Run core analyses and collect phyloseqs
+        core_results = Core(phyloseq)
+        core_phyloseqs = core_results.core_rds.flatten()
+        // Run SpiecEasi on core phyloseqs
+        Spiec_Easi(core_phyloseqs)
 }
