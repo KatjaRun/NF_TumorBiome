@@ -1,6 +1,6 @@
 nextflow.enable.dsl=2
 
-
+// To implement: also for unpaired data
 process Kraken {
     label 'standard' 
     publishDir "${params.outdir}/Unmapped_Preprocessing/Kraken2", mode: 'copy'
@@ -10,7 +10,7 @@ process Kraken {
     tuple val(sample), path(unmapped_fastq_1), path(unmapped_fastq_2)
 
     output:
-    path "${sample}.kraken.txt"
+    path "${sample}.kraken.txt", emit: krakentxt
     path "${sample}.kreport2"
 
     script:
@@ -24,28 +24,73 @@ process Kraken {
     """
 }
 
-/*
+// To implement: also for unpaired data
 process Centrifuge {
+    label 'centrifuge' 
+    publishDir "${params.outdir}/Unmapped_Preprocessing/Centrifuge", mode: 'copy'
+    tag "$sample"
 
-}
-
-process Recentrifuge {
     input:
-    path classified_report
+    tuple val(sample), path(unmapped_fastq_1), path(unmapped_fastq_2)
 
     output:
-    path "recentrifuge_output/*" emit: out
+    path "${sample}.results.txt", emit: centrifugetxt
+    path "${sample}.report.txt"
 
     script:
-    def report_type = params.use_centrifuge ? "centrifuge" : "kraken2"
-
     """
-    mkdir -p recentrifuge_output
-    recentrifuge -i ${classified_report} -o recentrifuge_output --type ${report_type}
+    centrifuge \
+        -x ${params.centrifuge_db} \
+        -p 16 \
+        -1 ${unmapped_fastq_1} \
+        -2 ${unmapped_fastq_2} \
+        --report-file ${sample}.report.txt \
+        -S ${sample}.results.txt
     """
 }
 
+// To implement: negative samples
+process Recentrifuge {
+    label 'recentrifuge' 
+    publishDir "${params.outdir}/Unmapped_Preprocessing/Recentrifuge", mode: 'copy'
 
+    input:
+    path classified
+    val input_type
+    val minscore
+
+    output:
+    path "All.rcf.data.tsv", emit: recentrifugetsv
+    path "All.rcf.html"
+    path "All.rcf.stat.tsv"
+
+    script:
+    // get input files and scoring scheme
+    def opts, scoring
+    if (input_type == 'kraken') {
+        opts    = classified.collect { "-k ${it}" }.join(' ')
+        scoring = 'KRAKEN'
+    } else if (input_type == 'centrifuge') {
+        opts    = classified.collect { "-f ${it}" }.join(' ')
+        scoring = 'SHEL'
+    } else {
+        throw new IllegalArgumentException("Unsupported input_type: ${input_type}")
+    }
+
+    """
+    rcf \
+        ${opts} \
+        -n /home/rungger/.conda/envs/Recentrifuge/bin/taxdump \
+        -o All \
+        --scoring ${scoring} \
+        --extra TSV \
+        --minscore ${minscore} \
+        --exclude 9606 \
+        --takeoutroot
+    """
+}
+
+/*
 process Recentrifuge_to_abundance {
 
 }
@@ -58,12 +103,18 @@ workflow Unmapped_Preprocessing {
 
     main:
     if (params.use_centrifuge) {
-        classified = Centrifuge(unmapped_ch)
-        //refined = Recentrifuge_Centrifuge(classified)
+        classified_centrifuge = Centrifuge(unmapped_ch)
+        classified_centrifuge_ch = classified_centrifuge.centrifugetxt.collect()
+        recentrifuge = Recentrifuge(classified_centrifuge_ch, 'centrifuge', params.rcf_minscore)
+        recentrifuge_ch = recentrifuge.recentrifugetsv.flatten().view()
     } else {
-        classified = Kraken(unmapped_ch) // default
-        //refined = Recentrifuge_Kraken(classified)
+        classified_kraken = Kraken(unmapped_ch)// default
+        classified_kraken_ch = classified_kraken.krakentxt.collect()
+        recentrifuge = Recentrifuge(classified_kraken_ch, 'kraken', params.rcf_minscore)
+        recentrifuge_ch = recentrifuge.recentrifugetsv.flatten().view()
     }
+
+
 
     /*
     abundance_table = Recentrifuge_to_abundance(refined)
