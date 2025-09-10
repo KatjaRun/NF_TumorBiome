@@ -12,6 +12,7 @@ nextflow.enable.dsl=2
 log.info """\
     NF_TumorBiome
     ============================================
+    Samplesheet       : ${params.samplesheet}
     Metadata          : ${params.metadata}
     Abundance table   : ${params.abundance_table}
     Output            : ${params.outdir}
@@ -27,6 +28,7 @@ log.info paramsSummaryLog(workflow)
 */
 
 // Including Workflows and Processes
+include { Unmapped_Preprocessing          } from './workflows/Unmapped_preprocessing.nf'
 include { CreateLineageTable         } from './workflows/Gathering_Data.nf'
 include { Gathering_Data             } from './workflows/Gathering_Data.nf'
 include { Basic_Analyses             } from './workflows/Basic_Analyses.nf'
@@ -40,7 +42,12 @@ include { Survival_Analyses          } from './workflows/Survival_Analyses.nf'
 
 
 workflow {
+    unmapped_ch = Channel.fromPath(params.samplesheet)
+                    .splitCsv(header: true)
 
+    Unmapped_Preprocessing(unmapped_ch)
+
+/*
     // Creating channels of metadata, abundance table, and create lineage table if non-existent
     metadata_ch = channel.fromPath(params.metadata, checkIfExists: true)
     abundance_table_ch = channel.fromPath(params.abundance_table, checkIfExists: true)
@@ -61,7 +68,9 @@ workflow {
 
     // Basic Analyses
     Basic_Analyses(phyloseq_ch.phyloseq)
+*/
 }
+
 
 // Logging info for the end (hopefully)
 workflow.onComplete {

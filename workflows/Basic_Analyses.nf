@@ -40,6 +40,7 @@ process Core {
 process Spiec_Easi {
     label 'standard' 
     publishDir "${params.outdir}/Basic_Analyses/SPIEC_EASI", mode: 'copy'
+    tag "$core_phyloseq"
 
     input:
     path core_phyloseq
