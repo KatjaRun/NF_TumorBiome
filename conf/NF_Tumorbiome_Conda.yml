@@ -1,0 +1,36 @@
+name: NF_Tumorbiome
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  # Core languages
+  - python=3.10
+  - r-base=4.3
+
+  # Metagenomic tools
+  - centrifuge
+  - kraken2
+  - recentrifuge=1.14.1
+
+  # Python libraries
+  - ete4
+  - pandas=1.5.3
+  - biopython=1.79
+
+  # R / Bioconductor packages
+  - bioconductor-phyloseq
+  - bioconductor-decontam
+  - r-spieceasi
+  - r-igraph
+  - r-pals
+  - r-tibble
+  - bioconductor-microbiome
+  - r-dplyr
+  - r-ggplot2
+  - r-ggpubr
+  - r-ggtext
+
+  # Helpers for compatibility / optional development
+  - r-remotes
+  - r-devtools
+

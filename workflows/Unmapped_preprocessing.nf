@@ -1,8 +1,8 @@
 nextflow.enable.dsl=2
 
 // To implement: also for unpaired data
-process Kraken {
-    label 'standard' 
+process Kraken { 
+    label 'standard'
     publishDir "${params.outdir}/Unmapped_Preprocessing/Kraken2", mode: 'copy'
     tag "$sample"
 
@@ -26,7 +26,7 @@ process Kraken {
 
 // To implement: also for unpaired data
 process Centrifuge {
-    label 'centrifuge' 
+    label 'centrifuge_conda'
     publishDir "${params.outdir}/Unmapped_Preprocessing/Centrifuge", mode: 'copy'
     tag "$sample"
 
@@ -39,9 +39,13 @@ process Centrifuge {
 
     script:
     """
+    mkdir ./temp
+    export TMPDIR=\$PWD/tmp
+
     centrifuge \
         -x ${params.centrifuge_db} \
-        -p 16 \
+        --temp-directory ./temp \
+        -p 8 \
         -1 ${unmapped_fastq_1} \
         -2 ${unmapped_fastq_2} \
         --report-file ${sample}.report.txt \
@@ -51,7 +55,7 @@ process Centrifuge {
 
 // To implement: negative samples
 process Recentrifuge {
-    label 'recentrifuge' 
+    label 'standard'
     publishDir "${params.outdir}/Unmapped_Preprocessing/Recentrifuge", mode: 'copy'
 
     input:
@@ -90,11 +94,22 @@ process Recentrifuge {
     """
 }
 
-/*
 process Recentrifuge_to_abundance {
+    label 'standard' 
+    publishDir "${params.outdir}/Analysis_data", mode: 'copy'
 
+    input:
+    path rcf_file
+    
+    output: 
+    path "Counts_rcf.tsv", emit: abundance_rcf
+
+    script:
+    """
+    Rcf_to_abundance.R ${rcf_file}
+    """
 }
-*/
+
 
 workflow Unmapped_Preprocessing {
 
@@ -104,22 +119,18 @@ workflow Unmapped_Preprocessing {
     main:
     if (params.use_centrifuge) {
         classified_centrifuge = Centrifuge(unmapped_ch)
-        classified_centrifuge_ch = classified_centrifuge.centrifugetxt.collect()
+        classified_centrifuge_ch = classified_centrifuge.centrifugetxt.collect().view()
         recentrifuge = Recentrifuge(classified_centrifuge_ch, 'centrifuge', params.rcf_minscore)
-        recentrifuge_ch = recentrifuge.recentrifugetsv.flatten().view()
+        recentrifuge_ch = recentrifuge.recentrifugetsv.flatten()
     } else {
-        classified_kraken = Kraken(unmapped_ch)// default
-        classified_kraken_ch = classified_kraken.krakentxt.collect()
+        classified_kraken = Kraken(unmapped_ch) // default
+        classified_kraken_ch = classified_kraken.krakentxt.collect().view()
         recentrifuge = Recentrifuge(classified_kraken_ch, 'kraken', params.rcf_minscore)
-        recentrifuge_ch = recentrifuge.recentrifugetsv.flatten().view()
+        recentrifuge_ch = recentrifuge.recentrifugetsv.flatten()
     }
 
-
-
-    /*
-    abundance_table = Recentrifuge_to_abundance(refined)
+    abundance_table = Recentrifuge_to_abundance(recentrifuge_ch)
 
     emit:
     abundance_table
-    */
 }

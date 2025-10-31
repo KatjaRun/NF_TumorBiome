@@ -1,13 +1,13 @@
 nextflow.enable.dsl=2
 
 process CreateLineageTable {
-    publishDir "${params.outdir}", mode: 'copy'
+    publishDir "${params.outdir}/Analysis_data", mode: 'copy'
 
     input:
     path abundance_table
     
     output: 
-    path "Lineage_table.csv"
+    path "Lineage_table.tsv"
     
 
     script:
@@ -17,7 +17,7 @@ process CreateLineageTable {
 }
 
 process CreatePhyloseq {
-    publishDir "${params.outdir}", mode: 'copy'
+    publishDir "${params.outdir}/Analysis_data", mode: 'copy'
 
     input:
     path metadata

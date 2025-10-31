@@ -42,21 +42,32 @@ include { Survival_Analyses          } from './workflows/Survival_Analyses.nf'
 
 
 workflow {
-    unmapped_ch = Channel.fromPath(params.samplesheet)
-                    .splitCsv(header: true)
 
-    Unmapped_Preprocessing(unmapped_ch)
+    // Generating channel for metadata (is needed as sample names need to be provided)
+    metadata_ch = Channel.fromPath(params.metadata, checkIfExists: true)
 
-/*
-    // Creating channels of metadata, abundance table, and create lineage table if non-existent
-    metadata_ch = channel.fromPath(params.metadata, checkIfExists: true)
-    abundance_table_ch = channel.fromPath(params.abundance_table, checkIfExists: true)
-    lineage_table_ch = params.lineage_table ? 
-        channel.fromPath(params.lineage_table, checkIfExists: true) : 
-        CreateLineageTable(abundance_table_ch)
 
+    if (params.samplesheet) {
+        // Generate abundance and lineage table if unmapped preprocessing is performed
+        unmapped_ch = Channel.fromPath(params.samplesheet)
+                            .splitCsv(header: true)
+
+        abundance_table_ch = Unmapped_Preprocessing(unmapped_ch)
+        lineage_ch = CreateLineageTable(abundance_table_ch)
+        abundance_table_ch.view()
+        lineage_ch.view()
+
+    } else if (params.abundance_table) {
+        abundance_table_ch = Channel.fromPath(params.abundance_table, checkIfExists: true)
+        lineage_ch = params.lineage_table ?
+            Channel.fromPath(params.lineage_table, checkIfExists: true) :
+            CreateLineageTable(abundance_table_ch)
+    } else {
+        error "You must provide either a samplesheet (--samplesheet) or an abundance table (--abundance_table)."
+    }
+    
     // Generating Phyloseq
-    phyloseq_ch = Gathering_Data(metadata_ch, abundance_table_ch,lineage_table_ch)
+    phyloseq_ch = Gathering_Data(metadata_ch, abundance_table_ch,lineage_ch)
 
     // Warnings if either samples or taxids were not completely matching
     phyloseq_ch.removed_samples.subscribe { path ->
@@ -68,7 +79,6 @@ workflow {
 
     // Basic Analyses
     Basic_Analyses(phyloseq_ch.phyloseq)
-*/
 }
 
 

@@ -1,0 +1,104 @@
+# ======================================================
+# Stage 1: Build environment with Conda
+# ======================================================
+FROM ubuntu:22.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+# Install basic utilities
+RUN apt-get update && apt-get install -y \
+    wget \
+    bzip2 \
+    ca-certificates \
+    curl \
+    git \
+    locales \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Configure locale
+RUN locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+# Set timezone
+RUN ln -sf /usr/share/zoneinfo/UTC /etc/localtime && \
+    echo "UTC" > /etc/timezone
+
+# Install Miniconda
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
+    bash /tmp/miniconda.sh -b -p /opt/conda && \
+    rm /tmp/miniconda.sh
+
+ENV PATH=/opt/conda/bin:$PATH
+
+# Accept Anaconda Terms of Service
+RUN conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main && \
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
+# Copy Conda environment YAML and create environment
+COPY ./NF_Tumorbiome_Conda.yml /tmp/NF_Tumorbiome_Conda.yml
+RUN conda env create -f /tmp/NF_Tumorbiome_Conda.yml && \
+    conda clean -afy
+
+# Perform Recentrifuge taxdump preparation (non-blocking)
+RUN /opt/conda/envs/NF_Tumorbiome/bin/retaxdump || true
+
+# Install R base system and dependencies
+RUN apt-get update && apt-get install -y \
+    r-base \
+    r-base-dev \
+    libxml2-dev \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libtiff5-dev \
+    libjpeg-dev \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# ======================================================
+# Install R packages inside the Conda environment
+# ======================================================
+RUN source activate NF_Tumorbiome && \
+    Rscript -e 'install.packages(c("BiocManager", "remotes", "devtools"), repos="https://cloud.r-project.org")' && \
+    Rscript -e 'install.packages(c("igraph", "pals", "tibble", "dplyr", "ggplot2", "ggpubr", "ggtext", "spieceasi"), repos="https://cloud.r-project.org")' && \
+    Rscript -e 'BiocManager::install(c("phyloseq", "decontam", "microbiome"))' && \
+    Rscript -e 'remotes::install_github("mikemc/speedyseq", dependencies=TRUE, upgrade="never")'
+
+# ======================================================
+# Stage 2: Slim runtime image
+# ======================================================
+FROM ubuntu:22.04 AS production
+
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+# Basic setup and locale configuration
+RUN apt-get update && apt-get install -y \
+    locales \
+    && locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8 && \
+    ln -sf /usr/share/zoneinfo/UTC /etc/localtime && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+# Copy Conda environment from builder
+COPY --from=builder /opt/conda /opt/conda
+
+# Set PATH and default Conda environment
+ENV PATH=/opt/conda/envs/NF_Tumorbiome/bin:/opt/conda/bin:$PATH
+ENV CONDA_DEFAULT_ENV=NF_Tumorbiome
+
+# Set working directory
+WORKDIR /workspace
+
+# Ensure conda environment is activated in interactive shells
+RUN echo "source activate NF_Tumorbiome" > /etc/profile.d/conda.sh
+
+# Default command (Nextflow or shell)
+ENTRYPOINT ["/bin/bash", "-c", "source activate NF_Tumorbiome && exec \"$@\"", "--"]
