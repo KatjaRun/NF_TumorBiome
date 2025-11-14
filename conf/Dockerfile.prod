@@ -64,7 +64,7 @@ RUN apt-get update && apt-get install -y \
 # ======================================================
 RUN source activate NF_Tumorbiome && \
     Rscript -e 'install.packages(c("BiocManager", "remotes", "devtools"), repos="https://cloud.r-project.org")' && \
-    Rscript -e 'install.packages(c("igraph", "pals", "tibble", "dplyr", "ggplot2", "ggpubr", "ggtext", "spieceasi"), repos="https://cloud.r-project.org")' && \
+    Rscript -e 'install.packages(c("igraph", "pals", "tibble", "dplyr", "ggplot2", "ggpubr", "ggtext", "spieceasi", "box"), repos="https://cloud.r-project.org")' && \
     Rscript -e 'BiocManager::install(c("phyloseq", "decontam", "microbiome"))' && \
     Rscript -e 'remotes::install_github("mikemc/speedyseq", dependencies=TRUE, upgrade="never")'
 

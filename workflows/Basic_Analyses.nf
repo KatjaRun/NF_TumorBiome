@@ -7,7 +7,7 @@ process Diversity {
     path phyloseq
     
     output: 
-    path "Alpha_Diversity.tsv"
+    path "Alpha_Diversity.tsv", emit: phyloseq
     path "AlphaDiversity_*.png"
     path "BetaDiversity_NMDS.png"
     path "BetaDiversity_PCoA.png"

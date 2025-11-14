@@ -119,12 +119,12 @@ workflow Unmapped_Preprocessing {
     main:
     if (params.use_centrifuge) {
         classified_centrifuge = Centrifuge(unmapped_ch)
-        classified_centrifuge_ch = classified_centrifuge.centrifugetxt.collect().view()
+        classified_centrifuge_ch = classified_centrifuge.centrifugetxt.collect()
         recentrifuge = Recentrifuge(classified_centrifuge_ch, 'centrifuge', params.rcf_minscore)
         recentrifuge_ch = recentrifuge.recentrifugetsv.flatten()
     } else {
         classified_kraken = Kraken(unmapped_ch) // default
-        classified_kraken_ch = classified_kraken.krakentxt.collect().view()
+        classified_kraken_ch = classified_kraken.krakentxt.collect()
         recentrifuge = Recentrifuge(classified_kraken_ch, 'kraken', params.rcf_minscore)
         recentrifuge_ch = recentrifuge.recentrifugetsv.flatten()
     }

@@ -15,6 +15,7 @@ log.info """\
     Samplesheet       : ${params.samplesheet}
     Metadata          : ${params.metadata}
     Abundance table   : ${params.abundance_table}
+    Host transcriptome: ${params.host_transcriptome}
     Output            : ${params.outdir}
     ============================================
     """
@@ -28,13 +29,13 @@ log.info paramsSummaryLog(workflow)
 */
 
 // Including Workflows and Processes
-include { Unmapped_Preprocessing          } from './workflows/Unmapped_preprocessing.nf'
+include { Unmapped_Preprocessing     } from './workflows/Unmapped_preprocessing.nf'
 include { CreateLineageTable         } from './workflows/Gathering_Data.nf'
 include { Gathering_Data             } from './workflows/Gathering_Data.nf'
 include { Basic_Analyses             } from './workflows/Basic_Analyses.nf'
+include { HostTranscriptome_Analyses } from './workflows/HostTranscriptome_Analyses.nf'
 
 /*
-include { Transcript_counts_Analyses } from './workflows/Transcript_counts_Analyses.nf'
 include { Survival_Analyses          } from './workflows/Survival_Analyses.nf'
 */
 
@@ -46,7 +47,6 @@ workflow {
     // Generating channel for metadata (is needed as sample names need to be provided)
     metadata_ch = Channel.fromPath(params.metadata, checkIfExists: true)
 
-
     if (params.samplesheet) {
         // Generate abundance and lineage table if unmapped preprocessing is performed
         unmapped_ch = Channel.fromPath(params.samplesheet)
@@ -54,8 +54,6 @@ workflow {
 
         abundance_table_ch = Unmapped_Preprocessing(unmapped_ch)
         lineage_ch = CreateLineageTable(abundance_table_ch)
-        abundance_table_ch.view()
-        lineage_ch.view()
 
     } else if (params.abundance_table) {
         abundance_table_ch = Channel.fromPath(params.abundance_table, checkIfExists: true)
@@ -71,14 +69,25 @@ workflow {
 
     // Warnings if either samples or taxids were not completely matching
     phyloseq_ch.removed_samples.subscribe { path ->
-        println "⚠️  Warning: Some samples were not matching. Removed samples are in: removed_samples.txt."
+        println "⚠️  Warning: Some samples were not matching. Removed samples are in: Analysis_data/removed_samples.txt."
     }
     phyloseq_ch.removed_taxids.subscribe { path ->
-        println "⚠️  Warning: Some taxids were not matching. Removed taxids are in: removed_taxids.txt."
+        println "⚠️  Warning: Some taxids were not matching. Removed taxids are in: Analysis_data/removed_taxids.txt."
     }
 
     // Basic Analyses
     Basic_Analyses(phyloseq_ch.phyloseq)
+
+    // Host-transcriptome analyses if host_transcriptome is provided
+    if (params.host_transcriptome) {
+        ht_ch = Channel.fromPath(params.host_transcriptome, checkIfExists: true)
+        ht_checked_ch = HostTranscriptome_Analyses(phyloseq_ch.phyloseq, ht_ch)
+
+        // Warning if samples between tpm and phyloseq were not completely matching
+        ht_checked_ch.removed_samples.subscribe { path ->
+            println "⚠️  Warning: Some samples were not matching. Removed samples are in: HostTranscriptome_Analyses/removed_samples.txt."
+        }
+    }
 }
 
 
