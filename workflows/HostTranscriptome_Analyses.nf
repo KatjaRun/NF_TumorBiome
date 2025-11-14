@@ -25,36 +25,46 @@ process Deconvolution {
     publishDir "${params.outdir}/HostTranscriptome_Analyses/Immune_Cells", mode: 'copy'
 
     input:
-    path phyloseq
+    path phyloseq_clr
+    path host_transcriptome
     
     output: 
-    path "Alpha_Diversity.tsv"
-    path "AlphaDiversity_*.png"
-    path "BetaDiversity_NMDS.png"
-    path "BetaDiversity_PCoA.png"
+    path "Cibersort.tsv"
+    path "Quantiseq.tsv"
+    path "Microbiome_clr_*.tsv"
+    path "Spearman_Cibersort_*.tsv"
+    path "Spearman_Quantiseq_*.tsv"
+    path "Heatmap_Cibersort_*.png"
+    path "Heatmap_Quantiseq_*.png"
 
     script:
     """
-    Diversity.R $phyloseq
+    Deconvolution.R $phyloseq_clr $host_transcriptome
     """
 }
 
 // Running ssGSEA and linear correlation
 process Gsea {
-    publishDir "${params.outdir}/HostTranscriptome_Analyses/Immune_Cells", mode: 'copy'
+    publishDir "${params.outdir}/HostTranscriptome_Analyses/Immune_Parameters", mode: 'copy'
 
     input:
-    path phyloseq
+    path phyloseq_clr
+    path host_transcriptome
     
     output: 
-    path "Alpha_Diversity.tsv"
-    path "AlphaDiversity_*.png"
-    path "BetaDiversity_NMDS.png"
-    path "BetaDiversity_PCoA.png"
+    path "GSEA_Reactome.tsv"
+    path "GSEA_GOBP.tsv"
+    path "GSEA_Hallmarks.tsv"
+    path "Spearman_Reactome_*.tsv"
+    path "Spearman_GOBP_*.tsv"
+    path "Spearman_Hallmarks_*.tsv"
+    path "Heatmap_Reactome_*.png"
+    path "Heatmap_GOBP_*.png"
+    path "Heatmap_Hallmarks.png"
 
     script:
     """
-    Diversity.R $phyloseq
+    Gsea.R $phyloseq_clr $host_transcriptome
     """
 }
 
@@ -66,11 +76,11 @@ workflow HostTranscriptome_Analyses {
 
     main:
         // Run diversity analyses
-        Check_Transcriptome(phyloseq, hosttranscriptome)
+        checkt_results = Check_Transcriptome(phyloseq, hosttranscriptome)
         // Run core analyses and collect phyloseqs
-        //Deconvolution(phyloseq)
+        Deconvolution(checkt_results.phyloseq_tpm_clr, checkt_results.host_tpm)
         // Run SpiecEasi on core phyloseqs
-        //Gsea(core_phyloseqs)
+        Gsea(checkt_results.phyloseq_tpm_clr, checkt_results.host_tpm)
 
     emit: 
         removed_samples = Check_Transcriptome.out.removed_samples
