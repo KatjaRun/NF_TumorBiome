@@ -1,10 +1,17 @@
 nextflow.enable.dsl=2
 
+// Determine memory and set maxForks based on the calculated memory for kraken
+include { calculateFolderSize; calculateMemoryForKraken } from '../conf/kraken_resources.groovy'
+def krakenMemory = calculateMemoryForKraken(params.kraken_db)
+def krakenForks = (krakenMemory.toGiga() <= 100) ? 10 : 2 // Adjust maxForks based on memory
+
 // To implement: also for unpaired data
 process Kraken { 
     label 'standard'
     publishDir "${params.outdir}/Unmapped_Preprocessing/Kraken2", mode: 'copy'
     tag "$sample"
+    memory { return krakenMemory } // Use pre-calculated memory
+    maxForks krakenForks // Dynamically set maxForks
 
     input:
     tuple val(sample), path(unmapped_fastq_1), path(unmapped_fastq_2)
@@ -17,7 +24,7 @@ process Kraken {
     """
     kraken2 \
         --db ${params.kraken_db} \
-        --threads 20 \
+        --threads $task.cpus \
         --paired ${unmapped_fastq_1} ${unmapped_fastq_2} \
         --report ${sample}.kreport2 \
         --output ${sample}.kraken.txt
@@ -55,7 +62,7 @@ process Centrifuge {
 
 // To implement: negative samples
 process Recentrifuge {
-    label 'standard'
+    label 'long'
     publishDir "${params.outdir}/Unmapped_Preprocessing/Recentrifuge", mode: 'copy'
 
     input:
