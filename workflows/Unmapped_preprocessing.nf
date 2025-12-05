@@ -7,7 +7,6 @@ def krakenForks = (krakenMemory.toGiga() <= 100) ? 10 : 2 // Adjust maxForks bas
 
 // To implement: also for unpaired data
 process Kraken { 
-    label 'standard'
     publishDir "${params.outdir}/Unmapped_Preprocessing/Kraken2", mode: 'copy'
     tag "$sample"
     memory { return krakenMemory } // Use pre-calculated memory
