@@ -17,18 +17,28 @@ dependencies:
   - pandas=1.5.3
   - biopython=1.79
 
-  # R / Bioconductor packages
-  - bioconductor-phyloseq
-  - bioconductor-decontam
-  - r-spieceasi
-  - r-igraph
-  - r-pals
+  # Base R packages
+  - r-magrittr
   - r-tibble
-  - bioconductor-microbiome
   - r-dplyr
-  - r-ggplot2
   - r-ggpubr
   - r-ggtext
+  - r-box
+  - r-openxlsx
+  - bioconductor-gsva
+
+  # Plot packages
+  - r-pals
+  - r-colorramps
+  - r-ggplot2
+  - r-igraph
+  - bioconductor-complexheatmap
+
+  # Microbiome packages
+  - bioconductor-phyloseq
+  - bioconductor-decontam
+  - bioconductor-microbiome
+  - r-spieceasi
 
   # Helpers for compatibility / optional development
   - r-remotes

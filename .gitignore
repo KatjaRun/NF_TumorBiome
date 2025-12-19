@@ -3,4 +3,4 @@
 nf-test.config
 tests/
 test_data/
-tumorbiome_1.1.sif
+*.sif

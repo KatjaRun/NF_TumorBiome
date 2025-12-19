@@ -45,28 +45,19 @@ RUN conda env create -f /tmp/NF_Tumorbiome_Conda.yml && \
 # Perform Recentrifuge taxdump preparation (non-blocking)
 RUN /opt/conda/envs/NF_Tumorbiome/bin/retaxdump || true
 
-# Install R base system and dependencies
-RUN apt-get update && apt-get install -y \
-    r-base \
-    r-base-dev \
-    libxml2-dev \
-    libcurl4-openssl-dev \
-    libssl-dev \
-    libfontconfig1-dev \
-    libfreetype6-dev \
-    libpng-dev \
-    libtiff5-dev \
-    libjpeg-dev \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
 # ======================================================
 # Install R packages inside the Conda environment
 # ======================================================
 RUN source activate NF_Tumorbiome && \
-    Rscript -e 'install.packages(c("BiocManager", "remotes", "devtools"), repos="https://cloud.r-project.org")' && \
-    Rscript -e 'install.packages(c("igraph", "pals", "tibble", "dplyr", "ggplot2", "ggpubr", "ggtext", "spieceasi", "box"), repos="https://cloud.r-project.org")' && \
-    Rscript -e 'BiocManager::install(c("phyloseq", "decontam", "microbiome"))' && \
-    Rscript -e 'remotes::install_github("mikemc/speedyseq", dependencies=TRUE, upgrade="never")'
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && \
+    Rscript -e 'remotes::install_github(c("mikemc/speedyseq"), dependencies=TRUE, upgrade="never")' && \
+    Rscript -e 'remotes::install_github(c("omnideconv/immunedeconv"), dependencies=TRUE, upgrade="never")' && \
+    Rscript -e 'devtools::install_github("Moonerss/CIBERSORT")'
+
+RUN conda run -n NF_Tumorbiome bash -c "\
+    git clone https://github.com/bmbolstad/preprocessCore.git && \
+    cd preprocessCore && \
+    R CMD INSTALL --configure-args='--disable-threading' ."
 
 # ======================================================
 # Stage 2: Slim runtime image
