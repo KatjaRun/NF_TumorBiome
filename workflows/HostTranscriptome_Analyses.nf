@@ -2,6 +2,7 @@ nextflow.enable.dsl=2
 
 // Checks if samples are matching and gets protein coding with gene name
 process Check_Transcriptome {
+    label 'standard'
     publishDir "${params.outdir}/HostTranscriptome_Analyses/", mode: 'copy'
 
     input:
@@ -11,7 +12,6 @@ process Check_Transcriptome {
     output: 
     path "HostTPM_filtered.tsv", emit: host_tpm
     path "Phyloseq_filtered.rds", emit: phyloseq_tpm
-    path "Phyloseq_filtered_clr.rds", emit: phyloseq_tpm_clr
     path "removed_samples.txt", optional: true, emit: removed_samples
 
     script:
@@ -22,6 +22,7 @@ process Check_Transcriptome {
 
 // Running immune cell deconvolution and linear correlation
 process Deconvolution {
+    label 'cpu'
     publishDir "${params.outdir}/HostTranscriptome_Analyses/Immune_Cells", mode: 'copy'
 
     input:
@@ -29,22 +30,26 @@ process Deconvolution {
     path host_transcriptome
     
     output: 
-    path "Cibersort.tsv"
-    path "Quantiseq.tsv"
+    path "CIBERSORT_Results.tsv"
+    path "quanTIseq_Results.tsv"
+    path "Phyloseq_clr_*.rds"
     path "Microbiome_clr_*.tsv"
-    path "Spearman_Cibersort_*.tsv"
-    path "Spearman_Quantiseq_*.tsv"
-    path "Heatmap_Cibersort_*.png"
-    path "Heatmap_Quantiseq_*.png"
+    path "Spearman_CIBERSORT_*.tsv", optional: true
+    path "Spearman_quanTIseq_*.tsv", optional: true
+    path "Heatmap_Cibersort_*.png", optional: true
+    path "Heatmap_quanTIseq_*.png", optional: true
+    path "Significant_Summary.xlsx", optional: true
+    path "Deconvolution_RunInfo.txt"
 
     script:
     """
-    Deconvolution.R $phyloseq_clr $host_transcriptome
+    Deconvolution.R $phyloseq_clr $host_transcriptome 
     """
 }
 
 // Running ssGSEA and linear correlation
 process Gsea {
+    label 'standard'
     publishDir "${params.outdir}/HostTranscriptome_Analyses/Immune_Parameters", mode: 'copy'
 
     input:
@@ -78,9 +83,9 @@ workflow HostTranscriptome_Analyses {
         // Run diversity analyses
         checkt_results = Check_Transcriptome(phyloseq, hosttranscriptome)
         // Run core analyses and collect phyloseqs
-        Deconvolution(checkt_results.phyloseq_tpm_clr, checkt_results.host_tpm)
+        Deconvolution(checkt_results.phyloseq_tpm, checkt_results.host_tpm)
         // Run SpiecEasi on core phyloseqs
-        Gsea(checkt_results.phyloseq_tpm_clr, checkt_results.host_tpm)
+        //Gsea(checkt_results.phyloseq_tpm, checkt_results.host_tpm)
 
     emit: 
         removed_samples = Check_Transcriptome.out.removed_samples

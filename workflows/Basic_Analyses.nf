@@ -1,6 +1,7 @@
 nextflow.enable.dsl=2
 
 process Diversity {
+    label 'standard'
     publishDir "${params.outdir}/Basic_Analyses/Diversity", mode: 'copy'
 
     input:
@@ -11,6 +12,7 @@ process Diversity {
     path "AlphaDiversity_*.png"
     path "BetaDiversity_NMDS.png"
     path "BetaDiversity_PCoA.png"
+    path "Diversity_RunInfo.txt"
 
     script:
     """
@@ -20,6 +22,7 @@ process Diversity {
 
 
 process Core {
+    label 'standard'
     publishDir "${params.outdir}/Basic_Analyses/Core", mode: 'copy'
 
     input:
@@ -29,6 +32,7 @@ process Core {
     path "CoreParameters_*.tsv"
     path "CorePhyloseq_*.rds", optional: true, emit: core_rds
     path "CoreHeatmap_*.png", optional: true
+    path "Core_RunInfo.txt"
 
     script:
     """
@@ -47,6 +51,7 @@ process Spiec_Easi {
     
     output: 
     path "Spiec_glasso_*.rds", optional: true
+    //path "SpiecEasi_RunInfo_*.txt"
 
     script:
     """
