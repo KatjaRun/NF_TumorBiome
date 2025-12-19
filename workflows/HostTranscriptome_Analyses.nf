@@ -36,7 +36,7 @@ process Deconvolution {
     path "Microbiome_clr_*.tsv"
     path "Spearman_CIBERSORT_*.tsv", optional: true
     path "Spearman_quanTIseq_*.tsv", optional: true
-    path "Heatmap_Cibersort_*.png", optional: true
+    path "Heatmap_CIBERSORT_*.png", optional: true
     path "Heatmap_quanTIseq_*.png", optional: true
     path "Significant_Summary.xlsx", optional: true
     path "Deconvolution_RunInfo.txt"
