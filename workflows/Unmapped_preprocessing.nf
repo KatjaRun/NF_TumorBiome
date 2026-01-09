@@ -13,11 +13,12 @@ process Kraken {
     maxForks krakenForks // Dynamically set maxForks
 
     input:
-    tuple val(sample), path(unmapped_fastq_1), path(unmapped_fastq_2)
+    tuple val(sample), path(unmapped_fastq_1), path(unmapped_fastq_2), val(batch)
 
     output:
-    path "${sample}.kraken.txt", emit: krakentxt
+    path "${sample}.kraken.txt"
     path "${sample}.kreport2"
+    tuple val(sample), path("${sample}.kraken.txt"), val(batch), emit: krakentxt
 
     script:
     """
@@ -37,11 +38,12 @@ process Centrifuge {
     tag "$sample"
 
     input:
-    tuple val(sample), path(unmapped_fastq_1), path(unmapped_fastq_2)
+    tuple val(sample), path(unmapped_fastq_1), path(unmapped_fastq_2), val(batch)
 
     output:
-    path "${sample}.results.txt", emit: centrifugetxt
+    path "${sample}.results.txt"
     path "${sample}.report.txt"
+    tuple val(sample), path("${sample}.results.txt"), val(batch), emit: centrifugetxt
 
     script:
     """
@@ -62,17 +64,18 @@ process Centrifuge {
 // To implement: negative samples
 process Recentrifuge {
     label 'long'
-    publishDir "${params.outdir}/Unmapped_Preprocessing/Recentrifuge", mode: 'copy'
+    publishDir "${params.outdir}/Unmapped_Preprocessing/Recentrifuge/$batch", mode: 'copy'
+    tag "$batch"
 
     input:
-    path classified
+    tuple val(batch), path(classified)
     val input_type
     val minscore
 
     output:
-    path "All.rcf.data.tsv", emit: recentrifugetsv
-    path "All.rcf.html"
-    path "All.rcf.stat.tsv"
+    path "${batch}.rcf.data.tsv", emit: recentrifugetsv
+    path "${batch}.rcf.html"
+    path "${batch}.rcf.stat.tsv"
 
     script:
     // get input files and scoring scheme
@@ -91,10 +94,10 @@ process Recentrifuge {
     rcf \
         ${opts} \
         -n /home/rungger/.conda/envs/Recentrifuge/bin/taxdump \
-        -o All \
+        -o ${batch} \
         --scoring ${scoring} \
         --extra TSV \
-        --minscore ${minscore} \
+        --minscore ${params.rcf_minscore} \
         --exclude 9606 \
         --takeoutroot
     """
@@ -105,14 +108,15 @@ process Recentrifuge_to_abundance {
     publishDir "${params.outdir}/Analysis_data", mode: 'copy'
 
     input:
-    path rcf_file
+    path rcf_files
     
     output: 
     path "Counts_rcf.tsv", emit: abundance_rcf
+    path "Rcftoabundance_RunInfo.txt"
 
     script:
     """
-    Rcf_to_abundance.R ${rcf_file}
+    Rcf_to_abundance.R ${rcf_files}
     """
 }
 
@@ -123,20 +127,40 @@ workflow Unmapped_Preprocessing {
     unmapped_ch
 
     main:
-    if (params.use_centrifuge) {
-        classified_centrifuge = Centrifuge(unmapped_ch)
-        classified_centrifuge_ch = classified_centrifuge.centrifugetxt.collect()
-        recentrifuge = Recentrifuge(classified_centrifuge_ch, 'centrifuge', params.rcf_minscore)
-        recentrifuge_ch = recentrifuge.recentrifugetsv.flatten()
-    } else {
-        classified_kraken = Kraken(unmapped_ch) // default
-        classified_kraken_ch = classified_kraken.krakentxt.collect()
-        recentrifuge = Recentrifuge(classified_kraken_ch, 'kraken', params.rcf_minscore)
-        recentrifuge_ch = recentrifuge.recentrifugetsv.flatten()
+    // Prepare channel and add batch if not available
+    unmapped_norm_ch = unmapped_ch.map { row ->
+        tuple(
+            row.sample,
+            file(row.unmapped_fastq_1),
+            file(row.unmapped_fastq_2),
+            row.batch ?: 'ALL'
+        )
     }
+
+    if (params.use_centrifuge) {
+        classified_ch = Centrifuge(unmapped_norm_ch).centrifugetxt
+        input_type = 'centrifuge'
+    } else {
+        classified_ch = Kraken(unmapped_norm_ch).krakentxt
+        input_type = 'kraken'
+    }
+
+    // Grouping by batches for Recentrifuge
+    classified_by_batch_ch = classified_ch
+        .map { sample, file, batch -> tuple(batch, file) }
+        .groupTuple()
+
+    recentrifuge = Recentrifuge(
+        classified_by_batch_ch,
+        input_type,
+        params.rcf_minscore
+    )
+
+    // Flatten Recentrifuge output
+    recentrifuge_ch = recentrifuge.recentrifugetsv.collect().view()
 
     abundance_table = Recentrifuge_to_abundance(recentrifuge_ch)
 
     emit:
-    abundance_table
+    abundance_table.abundance_rcf
 }
