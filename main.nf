@@ -89,12 +89,3 @@ workflow {
         }
     }
 }
-
-
-// Logging info for the end (hopefully)
-workflow.onComplete {
-    log.info "Pipeline completed successfully"
-}
-workflow.onError {
-    log.error "Pipeline failed with an error"
-}
