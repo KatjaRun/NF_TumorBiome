@@ -13,12 +13,12 @@ process Kraken {
     maxForks krakenForks // Dynamically set maxForks
 
     input:
-    tuple val(sample), path(unmapped_fastq_1), path(unmapped_fastq_2), val(batch)
+    tuple val(sample), path(unmapped_fastq_1), path(unmapped_fastq_2), val(batch), val(type)
 
     output:
     path "${sample}.kraken.txt"
     path "${sample}.kreport2"
-    tuple val(sample), path("${sample}.kraken.txt"), val(batch), emit: krakentxt
+    tuple val(sample), path("${sample}.kraken.txt"), val(batch), val(type), emit: krakentxt
 
     script:
     """
@@ -38,12 +38,12 @@ process Centrifuge {
     tag "$sample"
 
     input:
-    tuple val(sample), path(unmapped_fastq_1), path(unmapped_fastq_2), val(batch)
+    tuple val(sample), path(unmapped_fastq_1), path(unmapped_fastq_2), val(batch), val(type)
 
     output:
     path "${sample}.results.txt"
     path "${sample}.report.txt"
-    tuple val(sample), path("${sample}.results.txt"), val(batch), emit: centrifugetxt
+    tuple val(sample), path("${sample}.results.txt"), val(batch), val(type), emit: centrifugetxt
 
     script:
     """
@@ -61,14 +61,13 @@ process Centrifuge {
     """
 }
 
-// To implement: negative samples
 process Recentrifuge {
     label 'long'
     publishDir "${params.outdir}/Unmapped_Preprocessing/Recentrifuge/$batch", mode: 'copy'
     tag "$batch"
 
     input:
-    tuple val(batch), path(classified)
+    tuple val(batch), path(classified), val(type)
     val input_type
     val minscore
 
@@ -78,13 +77,26 @@ process Recentrifuge {
     path "${batch}.rcf.stat.tsv"
 
     script:
-    // get input files and scoring scheme
+    // get input files and sort them based on control and sample
+    def paired = []
+    classified.eachWithIndex { f, i ->
+        paired << [f, type[i]]
+    }
+    def sorted = paired.sort { it[1] == 'control' ? 0 : 1 }
+    
+    // splitting for input definition and counting of controls
+    def sorted_files = sorted.collect { it[0] }
+    def sorted_types = sorted.collect { it[1] }
+    def n_controls = sorted_types.count { it == 'control' }
+
+    // define rcf parameters and scoring scheme
     def opts, scoring
     if (input_type == 'kraken') {
-        opts    = classified.collect { "-k ${it}" }.join(' ')
+        // Put control samples first and count how many there are to put into -c
+        opts    = sorted_files.collect { "-k ${it}" }.join(' ')
         scoring = 'KRAKEN'
     } else if (input_type == 'centrifuge') {
-        opts    = classified.collect { "-f ${it}" }.join(' ')
+        opts    = sorted_files.collect { "-f ${it}" }.join(' ')
         scoring = 'SHEL'
     } else {
         throw new IllegalArgumentException("Unsupported input_type: ${input_type}")
@@ -93,7 +105,8 @@ process Recentrifuge {
     """
     rcf \
         ${opts} \
-        -n /home/rungger/.conda/envs/Recentrifuge/bin/taxdump \
+        -c ${n_controls} \
+        -n /opt/conda/envs/NF_Tumorbiome/bin/taxdump \
         -o ${batch} \
         --scoring ${scoring} \
         --extra TSV \
@@ -133,7 +146,8 @@ workflow Unmapped_Preprocessing {
             row.sample,
             file(row.unmapped_fastq_1),
             file(row.unmapped_fastq_2),
-            row.batch ?: 'ALL'
+            row.batch ?: 'ALL',
+            row.type in ['sample','control'] ? row.type : 'sample' // Also checking for typos
         )
     }
 
@@ -147,7 +161,7 @@ workflow Unmapped_Preprocessing {
 
     // Grouping by batches for Recentrifuge
     classified_by_batch_ch = classified_ch
-        .map { sample, file, batch -> tuple(batch, file) }
+        .map { sample, file, batch, type -> tuple(batch, file, type) }
         .groupTuple()
 
     recentrifuge = Recentrifuge(

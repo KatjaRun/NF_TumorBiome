@@ -10,7 +10,7 @@ dependencies:
   # Metagenomic tools
   - centrifuge
   - kraken2
-  - recentrifuge=1.14.1
+  - recentrifuge
 
   # Python libraries
   - ete4

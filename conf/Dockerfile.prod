@@ -43,7 +43,8 @@ RUN conda env create -f /tmp/NF_Tumorbiome_Conda.yml && \
     conda clean -afy
 
 # Perform Recentrifuge taxdump preparation (non-blocking)
-RUN /opt/conda/envs/NF_Tumorbiome/bin/retaxdump || true
+RUN source activate NF_Tumorbiome && \
+    /opt/conda/envs/NF_Tumorbiome/bin/retaxdump -n /opt/conda/envs/NF_Tumorbiome/bin/taxdump
 
 # ======================================================
 # Install R packages inside the Conda environment
