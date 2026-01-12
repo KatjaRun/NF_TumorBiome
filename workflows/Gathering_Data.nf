@@ -1,6 +1,7 @@
 nextflow.enable.dsl=2
 
 process CreateLineageTable {
+    label 'standard' 
     publishDir "${params.outdir}/Analysis_data", mode: 'copy'
 
     input:
@@ -12,11 +13,12 @@ process CreateLineageTable {
 
     script:
     """
-    Taxonomy.py $abundance_table
+    Taxonomy.R $abundance_table
     """
 }
 
 process CreatePhyloseq {
+    label 'standard' 
     publishDir "${params.outdir}/Analysis_data", mode: 'copy'
 
     input:
