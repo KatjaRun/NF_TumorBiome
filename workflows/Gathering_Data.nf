@@ -27,7 +27,9 @@ process CreatePhyloseq {
     path lineage_table
 
     output:
-    path "Phyloseq.rds", emit: phyloseq
+    path "Phyloseq_Full.rds", emit: phyloseq
+    path "Phyloseq_Microbes.rds", emit: phyloseq_microbes
+    path "Phyloseq_*.rds", emit: phyloseq_specific
     path "removed_samples.txt", optional: true, emit: removed_samples
     path "removed_taxids.txt", optional: true, emit: removed_taxids
 
@@ -48,7 +50,7 @@ workflow Gathering_Data {
         CreatePhyloseq(metadata, abundance_table, lineage_table)
 
     emit:
-        phyloseq        = CreatePhyloseq.out.phyloseq
+        phyloseq        = CreatePhyloseq.out.phyloseq_microbes
         removed_samples = CreatePhyloseq.out.removed_samples
         removed_taxids  = CreatePhyloseq.out.removed_taxids
 }
