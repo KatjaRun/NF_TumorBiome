@@ -8,10 +8,13 @@ process Diversity {
     path phyloseq
     
     output: 
-    path "Alpha_Diversity.tsv", emit: phyloseq
+    path "AlphaDiversity.tsv", emit: phyloseq
     path "AlphaDiversity_*.png"
-    path "BetaDiversity_NMDS.png"
-    path "BetaDiversity_PCoA.png"
+    path "BetaDiversity_NMDS.tsv"
+    path "BetaDiversity_NMDS_*.png"
+    path "BetaDiversity_PCoA.tsv"
+    path "BetaDiversity_PCoA_*.png"
+    path "Composition_*.png"
     path "Diversity_RunInfo.txt"
 
     script:
