@@ -2,34 +2,36 @@ nextflow.enable.dsl=2
 
 process Diversity {
     label 'standard'
-    publishDir "${params.outdir}/Basic_Analyses/Diversity", mode: 'copy'
+    tag "$name"
+    publishDir "${params.outdir}/Basic_Analyses/Diversity/$name", mode: 'copy'
 
     input:
-    path phyloseq
+    tuple val(name), path(phyloseq)
     
     output: 
-    path "AlphaDiversity.tsv", emit: phyloseq
+    path "AlphaDiversity_*.tsv", emit: phyloseq
     path "AlphaDiversity_*.png"
-    path "BetaDiversity_NMDS.tsv"
-    path "BetaDiversity_NMDS_*.png"
-    path "BetaDiversity_PCoA.tsv"
-    path "BetaDiversity_PCoA_*.png"
+    path "BetaDiversity_NMDS_*.tsv", optional: true
+    path "BetaDiversity_NMDS_*.png", optional: true
+    path "BetaDiversity_PCoA.tsv", optional: true
+    path "BetaDiversity_PCoA_*.png", optional: true
     path "Composition_*.png"
     path "Diversity_RunInfo.txt"
 
     script:
     """
-    Diversity.R $phyloseq
+    Diversity.R $phyloseq $name
     """
 }
 
 
 process Core {
     label 'standard'
-    publishDir "${params.outdir}/Basic_Analyses/Core", mode: 'copy'
+    tag "$name"
+    publishDir "${params.outdir}/Basic_Analyses/Core/$name", mode: 'copy'
 
     input:
-    path phyloseq
+    tuple val(name), path(phyloseq)
     
     output: 
     path "CoreParameters_*.tsv"
@@ -66,13 +68,13 @@ process Spiec_Easi {
 workflow Basic_Analyses {
 
     take:
-        phyloseq
+        phyloseq_all
 
     main:
         // Run diversity analyses
-        Diversity(phyloseq)
+        Diversity(phyloseq_all)
         // Run core analyses and collect phyloseqs
-        core_results = Core(phyloseq)
+        core_results = Core(phyloseq_all)
         core_phyloseqs = core_results.core_rds.flatten()
         // Run SpiecEasi on core phyloseqs
         Spiec_Easi(core_phyloseqs)
