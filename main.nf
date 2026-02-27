@@ -76,12 +76,13 @@ workflow {
     }
 
     // Basic Analyses
-    Basic_Analyses(phyloseq_ch.phyloseq)
+    phyloseq_ch.phyloseq_all.view()
+    Basic_Analyses(phyloseq_ch.phyloseq_all)
 
     // Host-transcriptome analyses if host_transcriptome is provided
     if (params.host_transcriptome) {
         ht_ch = Channel.fromPath(params.host_transcriptome, checkIfExists: true)
-        ht_checked_ch = HostTranscriptome_Analyses(phyloseq_ch.phyloseq, ht_ch)
+        ht_checked_ch = HostTranscriptome_Analyses(phyloseq_ch.phyloseq_mic, ht_ch)
 
         // Warning if samples between tpm and phyloseq were not completely matching
         ht_checked_ch.removed_samples.subscribe { path ->
