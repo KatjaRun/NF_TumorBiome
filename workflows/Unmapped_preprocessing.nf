@@ -133,6 +133,30 @@ process Recentrifuge_to_abundance {
     """
 }
 
+process Decontam {
+    label 'standard'
+    tag "$name"
+    publishDir "${params.outdir}/Analysis_data/Decontam_$name", mode: 'copy'
+
+    input:
+    tuple val(name), path(phyloseq)
+    path concentration_df
+    
+    output: 
+    path "Decontam_RunInfo.txt"
+    path "Batch_info.tsv"
+    path "Decontam_Results.tsv", optional: true
+    path "Phyloseq_Decontam_Microbes.rds", optional: true, emit: phyloseq_microbes
+    path "Phyloseq_Decontam_Bacteria.rds", optional: true, emit: phyloseq_bacteria
+    path "Phyloseq_Decontam_Viruses.rds", optional: true, emit: phyloseq_virus
+    path "Phyloseq_Decontam_Archaea.rds", optional: true, emit: phyloseq_archaea
+    path "Phyloseq_Decontam_Fungi.rds", optional: true, emit: phyloseq_fungi
+
+    script:
+    """
+    Decontam.R $phyloseq $name $concentration_df
+    """
+}
 
 workflow Unmapped_Preprocessing {
 

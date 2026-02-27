@@ -30,6 +30,7 @@ log.info paramsSummaryLog(workflow)
 
 // Including Workflows and Processes
 include { Unmapped_Preprocessing     } from './workflows/Unmapped_preprocessing.nf'
+include { Decontam                   } from './workflows/Unmapped_preprocessing.nf'
 include { CreateLineageTable         } from './workflows/Gathering_Data.nf'
 include { Gathering_Data             } from './workflows/Gathering_Data.nf'
 include { Basic_Analyses             } from './workflows/Basic_Analyses.nf'
@@ -75,9 +76,35 @@ workflow {
         println "⚠️  Warning: Some taxids were not matching. Removed taxids are in: Analysis_data/removed_taxids.txt."
     }
 
-    // Basic Analyses
+    // Running decontam if concentration column is present in sample sheet
+    has_concentration = false
+    decontam_phyloseq_ch = Channel.empty()
     phyloseq_ch.phyloseq_all.view()
-    Basic_Analyses(phyloseq_ch.phyloseq_all)
+
+    if (params.samplesheet) {
+        def header = new File(params.samplesheet).withReader { it.readLine() }
+        has_concentration = header.split(',').contains('concentration')
+
+        if (has_concentration) {
+            samplesheet_path_ch = Channel.fromPath(params.samplesheet, checkIfExists: true).collect()
+            cp_decontam = Decontam(phyloseq_ch.phyloseq_all, samplesheet_path_ch)
+
+            println "Running decontam, performing downstream on the decontaminated phyloseqs."
+
+            decontam_phyloseq_ch = Channel
+                .empty()
+                .concat(cp_decontam.phyloseq_microbes.map { file -> tuple('Microbes', file) })
+                .concat(cp_decontam.phyloseq_bacteria.map { file -> tuple('Bacteria', file) })
+                .concat(cp_decontam.phyloseq_virus.map { file -> tuple('Viruses', file) })
+                .concat(cp_decontam.phyloseq_archaea.map { file -> tuple('Archaea', file) })
+                .concat(cp_decontam.phyloseq_fungi.map { file -> tuple('Fungi', file) })
+        }
+    }
+
+    // Now this works
+    phyloseq_all_ch = has_concentration ? decontam_phyloseq_ch : phyloseq_ch.phyloseq_all
+    phyloseq_all_ch.view()
+    Basic_Analyses(phyloseq_all_ch)
 
     // Host-transcriptome analyses if host_transcriptome is provided
     if (params.host_transcriptome) {
